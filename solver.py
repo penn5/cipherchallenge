@@ -17,7 +17,7 @@ def make_frequencies(s):
 def get_words(s):
     frequencies = {}
     valid = string.ascii_lowercase + " "
-    for word in "".join(c for c in s.lower() if c in valid).split():
+    for word in "".join(c if c in valid else " "for c in s.lower()).split():
         frequencies[word] = frequencies.get(word, 0) + 1
     return [x[0] for x in sorted(frequencies.items(), key=lambda kv: kv[1], reverse=True)]
 
@@ -33,9 +33,9 @@ def solve(s):
     get_word(words, mapping, "the")
     while get_any_word(words, mapping):
         pass
-#    get_any_word(words, mapping)
     print(mapping)
     print(s.translate(str.maketrans(mapping)))
+    return mapping
 
 
 def get_word(words, mapping, word):
@@ -65,11 +65,14 @@ def get_word(words, mapping, word):
 
 
 def get_any_word(words, mapping):
+    print(words)
     for word in words:
         try:
             found_words = WORDS[abstractify_word(word)]
         except KeyError:
             continue  # Word not in dictionary
+        if "jwgsijwuwxpm" in word:
+            print(found_words)
         matching_words = {}
         for found_word in found_words:
             i = 0
@@ -166,7 +169,6 @@ def count_alphabets(s):
         for offset in range(alphabets):
             ioc = calculate_ioc(s[offset::alphabets])
             total_ioc += ioc
-#        print(alphabets, total_ioc / alphabets)
         if total_ioc / alphabets > ALPHABET_ENGLISH - ALPHABET_OFFSET and total_ioc / alphabets < ALPHABET_ENGLISH + ALPHABET_OFFSET:
             return alphabets
     return None
@@ -188,14 +190,13 @@ FREQUENCIES = dict(sorted(json.load(open("frequencies.json")).items(), key=lambd
 WORDS = {}
 for word in open("english-words/words_alpha.txt").readlines():
     WORDS.setdefault(abstractify_word(word.lower().strip()), []).append(word.lower().strip())
-#WORDS = {word.lower().strip(): abstractify_word(word.lower().strip()) for word in open("english-words/words_alpha.txt").readlines()}
 
 
 def main():
     s = ""
     t = True
-    while t != "":
-        t = input("Enter the ciphertext, and a blank line to finish: ")
+    while t != "EOF":
+        t = input("Enter the ciphertext, and 'EOF' to finish: ")
         s += t + "\n"
     print()
     print()
@@ -204,7 +205,12 @@ def main():
     print("alphabets\t\t", alphabets)
     for alphabet in range(alphabets):
         subtext = s[alphabet::alphabets]  # TODO: this won't work for multiple alphabets, because it includes special chars
-        solve(subtext)
+        alphabet = solve(subtext)
+        for letter in string.ascii_lowercase:
+            if letter not in alphabet.keys():
+                print(f"Failed to solve {letter} from ciphertext")
+            if letter not in alphabet.values():
+                print(f"Failed to solve {letter} from plaintext")
 
 if __name__ == "__main__":
     main()
