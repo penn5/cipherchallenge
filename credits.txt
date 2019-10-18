@@ -1,0 +1,1 @@
+https://gist.githubusercontent.com/evilpacket/5973230/raw/045e0ecc34c6362728a9bce62d5cd2e41d29ad9a/letter_freq.json
