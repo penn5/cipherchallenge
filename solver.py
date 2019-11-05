@@ -1,6 +1,20 @@
 import json
 import string
 import operator
+import itertools
+import collections
+import copy
+
+
+
+ALPHABET_ENGLISH = 1.73
+ALPHABET_OFFSET = 0.1
+MAX_ALPHABETS = 30
+TRANS_THE_RATIO = 100
+
+
+def cleanup_str(s, spaces=True):
+    return "".join(c if c in (string.ascii_lowercase + (" " if spaces else "")) else (" " if spaces else "") for c in s.lower())
 
 
 def make_frequencies(s):
@@ -17,25 +31,208 @@ def make_frequencies(s):
 def get_words(s):
     frequencies = {}
     valid = string.ascii_lowercase + " "
-    for word in "".join(c if c in valid else " "for c in s.lower()).split():
+    for word in cleanup_str(s).split():
         frequencies[word] = frequencies.get(word, 0) + 1
     return [x[0] for x in sorted(frequencies.items(), key=lambda kv: kv[1], reverse=True)]
 
 
-def solve(s):
-    s = s.lower()
-    distribution = make_frequencies(s)
-    mapping = {}
-    rmapping = {}
-    mapping[try_letter(s, distribution, "e")] = "e"
-    rmapping["e"] = try_letter(s, distribution, "e")
-    words = get_words(s)
-    get_word(words, mapping, "the")
-    while get_any_word(words, mapping):
-        pass
-    print(mapping)
-    print(s.translate(str.maketrans(mapping)))
-    return mapping
+def solve(st, alphabets=1, given_mapping=None):
+    st = cleanup_str(st, False)
+    maps = []
+    for alphabet in range(alphabets):
+        s = st[alphabet::alphabets]
+        distribution = make_frequencies(s)
+        print(distribution)
+        if given_mapping is None:
+            mapping = {}
+        else:
+            mapping = given_mapping[alphabet]
+        mapping[try_letter(s, distribution, "e")] = "e"
+        mapping[try_letter(s, distribution, "t")] = "t"
+        if set(("e", "t")) == mapping.keys():
+            print("Transposition cipher detected.")
+            print(trans_perm_guess(s))
+            return
+        print(mapping)
+        print(s.translate(str.maketrans(mapping)))
+        maps.append(mapping)
+    # Find "the"
+#    for start in range(len(s) - 3):
+#        sub = s[start:start + 3]
+#        base_alphabet = start % alphabets
+#        if len(set(sub)) != 3:
+#            continue
+#        if maps[base_alphabet][sub[0]] == "t" and maps[(base_alphabet + 2) % alphabets][sub[2]] == "e":
+#            # Probably says "the"
+#            maps[(base_alphabet + 1) % alphabets][sub[1]] = "h"
+#    # Find "that"
+#    for start in range(len(s) - 4):
+#        sub = s[start:start + 4]
+#        base_alphabet = start % alphabets
+#        if len(set(sub)) != 3:
+#            continue
+#        if maps[base_alphabet][sub[0]] == "t" and maps[(base_alphabet + 1) % alphabets][sub[1]] == "h" \
+#                and maps[(base_alphabet) + :
+#            # Probably says "the"
+#            maps[(base_alphabet + 1) % alphabets][sub[1]] = "h"
+    modified = True
+    lastmaps = copy.deepcopy(maps)
+    while modified:
+        check_word(s, "the", maps, alphabets)
+        print(maps)
+        check_word(s, "that", maps, alphabets)
+        print(maps)
+        there = check_word(s, "there", maps, alphabets)
+        print(maps)
+        check_word(s, "what", maps, alphabets)
+        print(maps)
+        check_word(s, "when", maps, alphabets)
+        print(maps)
+        check_word(s, "which", maps, alphabets)
+        print(maps)
+        check_word(s, "who", maps, alphabets)
+        print(maps)
+        check_word(s, "and", maps, alphabets, 1)
+        print(maps)
+        check_word(s, "have", maps, alphabets)
+        print(maps)
+        check_word(s, "from", maps, alphabets)
+        print(maps)
+        check_word(s, "ight", maps, alphabets)
+        print(maps)
+        check_word(s, "less", maps, alphabets)
+        print(maps)
+        check_word(s, "our", maps, alphabets)
+        print(maps)
+        check_word(s, "this", maps, alphabets)
+        print(maps)
+        check_word(s, "are", maps, alphabets)
+        print(maps)
+        if lastmaps == maps:
+            modified = False
+        else:
+            lastmaps = copy.deepcopy(maps)
+
+    while True:
+
+
+#    for i in range(alphabets):
+#        ret.append(s[i::alphabets].translate(str.maketrans(maps[i])))
+        alphabet = 0
+        ret = []
+        for i in range(len(s)):
+            if s[i] in maps[alphabet]:
+                ret.append("\u001b[32;1m" + maps[alphabet][s[i]] + "\033[0m")
+            else:
+                ret.append("\u001b[31;1m" + s[i] + "\033[0m")
+            alphabet = alphabet + 1 % alphabets
+
+        print("".join(ret))
+
+
+        inp = input("Please enter a mapping: ").lower().strip()
+        if not len(inp):
+            print("Aborted")
+            break
+        if len(inp) not in (3, 4):
+            print("Wrong count")
+            continue
+        if len(inp) == 4 and inp[3] != "=":
+            print("Wrong count")
+            continue
+        if len(inp) == 4:
+            override = True
+        else:
+            override = False
+        if inp[1] not in string.ascii_lowercase or inp[2] not in string.ascii_lowercase:
+            print("Invalid format")
+            continue
+        try:
+            alphabet = int(inp[0])
+        except ValueError:
+            print("Invalid alphabet")
+            continue
+        if inp[2] in maps[alphabet].values():
+            if override:
+                maps[alphabet] = {k: v for k, v in maps[alphabet].items() if v != inp[2]}
+                print("Dest overriden")
+            else:
+                print("Dest already used. Override by putting a '+' at the end.")
+                continue
+        maps[alphabet][inp[1]] = inp[2]
+
+
+def trans_perm_gen(s):
+    for length in range(3, 6):
+        for permu in itertools.permutations(range(length)):
+            tmp = []
+            for start in range(0, len(s), length):
+                if start + length > len(s):
+                    tmp.append(s[start:])
+                else:
+                    tmp.append("".join(s[start + x] for x in permu))
+#            if permu == (1,0,4,3,2):
+#                print(permu, "".join(tmp))
+            yield permu, "".join(tmp)
+
+
+def trans_perm_guess(s):
+    for permu, poss in trans_perm_gen(s):
+        the_count = poss.count("the")
+        if the_count and len(s) / the_count < TRANS_THE_RATIO:
+            return poss
+
+def check_word(s, target, maps, alphabets, thresh=None):
+    uniqlen = len(set(target))
+    l = len(target)
+    matches = []
+    if thresh is None:
+        thresh = l - 1
+    for start in range(len(s) - l):
+        sub = s[start:start + l]
+        base_alphabet = start % alphabets
+        matched = 0
+        for i in range(l):
+            if sub[i] not in maps[base_alphabet + i % alphabets]:
+                if target[i] in maps[base_alphabet + i % alphabets].values():
+                    # The value we want is set, but its key isn't the one we are on. Clearly, something is wrong.
+                    matched = 0
+                    break
+                continue  # Not set in mapping
+            if maps[base_alphabet + i % alphabets][sub[i]] != target[i]:
+                matched = 0  # It's wrong.
+                break
+            matched += 1
+        if matched < thresh:
+            continue
+        matches.append(sub)
+
+    if not matches:
+        print(f"Could not match {target}!")
+        return []
+
+    print(matches)
+
+    counter = collections.Counter(matches)
+
+    common = counter.most_common(2)
+    if len(common) > 1 and common[0][1] == common[1][1]:
+        print(f"Equal split while matching {target} ({common})")
+        ret = []
+        lastfreq = None
+        for word, freq in counter.most_common():
+           if freq != lastfreq and lastfreq is not None:
+               return ret
+           ret.append(word)
+           lastfreq = freq
+        return ret
+    sub = common[0][0]
+    for i in range(l):
+        if sub[i] in maps[base_alphabet + i % alphabets]:
+            assert maps[base_alphabet + i % alphabets][sub[i]] == target[i], (sub, target, i, maps, base_alphabet, alphabets)
+        maps[base_alphabet + i % alphabets][sub[i]] = target[i]
+    print(f"Matched {target} to {sub}")
+    return [sub]
 
 
 def get_word(words, mapping, word):
@@ -65,14 +262,11 @@ def get_word(words, mapping, word):
 
 
 def get_any_word(words, mapping):
-    print(words)
     for word in words:
         try:
             found_words = WORDS[abstractify_word(word)]
         except KeyError:
             continue  # Word not in dictionary
-        if "jwgsijwuwxpm" in word:
-            print(found_words)
         matching_words = {}
         for found_word in found_words:
             i = 0
@@ -88,9 +282,6 @@ def get_any_word(words, mapping):
                 i += 1
             if not okay:
                 continue  # it might be the next one
-#            if matched + 2 < len(word):
-#                print(f"too short {matched} {len(word)}")
-#                continue
             matching_words[found_word] = matched  # Okay, it's the word (hopefully)
         if not matching_words:
             continue  # No words match
@@ -133,20 +324,14 @@ def abstractify_word(word):
     return tuple(ret)
 
 
-def try_letters(s):
-    distribution = make_frequencies(s)
-    changed = True
-    mapping = {}
+def try_letters(s, mapping, distribution):
     for letter in FREQUENCIES.keys():
         repl = try_letter(s, distribution, letter)
-        assert repl not in mapping.keys()
+        assert repl not in mapping.keys() or mapping[repl] == letter, (letter, mapping.items(), repl)
         if repl is None:
             pass  # Only ever happens if the target letter is not present in the text
         else:
             mapping[repl] = letter
-    print(mapping)
-    ret = s.lower().translate(str.maketrans(mapping))
-    print(ret)
 
 
 def try_letter(s, frequencies, letter):
@@ -161,14 +346,12 @@ def try_letter(s, frequencies, letter):
         return None
 
 def count_alphabets(s):
-    ALPHABET_ENGLISH = 1.73
-    ALPHABET_OFFSET = 0.05
-    MAX_ALPHABETS = 15
     for alphabets in range(1, MAX_ALPHABETS):
         total_ioc = 0
         for offset in range(alphabets):
             ioc = calculate_ioc(s[offset::alphabets])
             total_ioc += ioc
+        print(total_ioc / alphabets)
         if total_ioc / alphabets > ALPHABET_ENGLISH - ALPHABET_OFFSET and total_ioc / alphabets < ALPHABET_ENGLISH + ALPHABET_OFFSET:
             return alphabets
     return None
@@ -176,7 +359,7 @@ def count_alphabets(s):
 
 def calculate_ioc(s, normalise=26):
     ret = 0
-    st = "".join(c for c in s.lower() if c in string.ascii_lowercase)  # go lowercase and remove all non-letters
+    st = cleanup_str(s, False)
     length = len(st)
     if length <= 1:
         return 0
@@ -190,27 +373,34 @@ FREQUENCIES = dict(sorted(json.load(open("frequencies.json")).items(), key=lambd
 WORDS = {}
 for word in open("english-words/words_alpha.txt").readlines():
     WORDS.setdefault(abstractify_word(word.lower().strip()), []).append(word.lower().strip())
+#ANAGRAMS = {}
+#for word in open("english-words/words_alpha.txt").readlines():
+#    ANAGRAMS.setdefault("".join(sorted(word.lower().strip())).append(word.lower().strip())
 
 
 def main():
     s = ""
-    t = True
+    t = ""
     while t != "EOF":
-        t = input("Enter the ciphertext, and 'EOF' to finish: ")
         s += t + "\n"
+        t = input("Enter the ciphertext, and 'EOF' to finish: ")
     print()
     print()
     print()
     alphabets = count_alphabets(s)
     print("alphabets\t\t", alphabets)
-    for alphabet in range(alphabets):
-        subtext = s[alphabet::alphabets]  # TODO: this won't work for multiple alphabets, because it includes special chars
-        alphabet = solve(subtext)
-        for letter in string.ascii_lowercase:
-            if letter not in alphabet.keys():
-                print(f"Failed to solve {letter} from ciphertext")
-            if letter not in alphabet.values():
-                print(f"Failed to solve {letter} from plaintext")
+    subtext = cleanup_str(s)
+    alphabet = solve(subtext, alphabets)
+    for letter in string.ascii_lowercase:
+        if letter in s.lower() and letter not in alphabet.keys():
+            print(f"Failed to solve {letter} from ciphertext")
+        if letter not in alphabet.values():
+            print(f"Failed to solve {letter} from plaintext")
+    for letter in string.ascii_lowercase:
+        if letter in s.lower() and letter not in alphabet.keys():
+            value = input(f"Please enter the value for letter {letter} from ciphertext: ")
+            if len(value) != 1:
+                print("Skipped.")
 
 if __name__ == "__main__":
     main()
