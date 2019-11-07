@@ -51,7 +51,7 @@ def solve(ost, alphabets=1, given_mapping=None):
             mapping = given_mapping[alphabet]
         mapping[try_letter(s, distribution, "e")] = "e"
         mapping[try_letter(s, distribution, "t")] = "t"
-        if set(("e", "t")) == mapping.keys() or True:  # TODO
+        if set(("e", "t")) == mapping.keys():
             print("Transposition cipher detected.")
 #            print(trans_perm_guess(s))
             print(trans_col_guess(s))
@@ -202,7 +202,7 @@ def trans_perm_guess(s):
 
 def trans_col_gen(s):
     slen = len(s)
-    for rowlen in range(7, 8):  # TODO
+    for rowlen in range(1, 10):
         collen = math.ceil(slen / rowlen)
         for permu in itertools.permutations(range(rowlen)):
             poss = "".join(s[offset::collen] for offset in range(collen))
@@ -444,8 +444,7 @@ def main():
     print()
     print()
     print()
-#    alphabets = count_alphabets(s)
-    alphabets = 1  # TODO
+    alphabets = count_alphabets(s)
     print("alphabets\t\t", alphabets)
     subtext = cleanup_str(s)
     alphabet = solve(subtext, alphabets)
