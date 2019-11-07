@@ -202,8 +202,11 @@ def trans_perm_guess(s):
 
 def trans_col_gen(s):
     slen = len(s)
-    for rowlen in range(1, 10):
-        collen = math.ceil(slen / rowlen)
+    for rowlen in range(10, 2, -1):
+        collen = slen / rowlen
+        if not collen.is_integer():
+            continue
+        collen = int(collen)
         for permu in itertools.permutations(range(rowlen)):
             poss = "".join(s[offset::collen] for offset in range(collen))
             permutated = "".join(poss[c + i] for c in range(0, slen, rowlen) for i in permu)
