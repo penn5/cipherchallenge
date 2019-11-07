@@ -202,7 +202,7 @@ def trans_perm_guess(s):
 
 def trans_col_gen(s):
     slen = len(s)
-    for rowlen in range(10, 2, -1):
+    for rowlen in range(15, 2, -1):
         collen = slen / rowlen
         if not collen.is_integer():
             continue
@@ -211,8 +211,6 @@ def trans_col_gen(s):
             poss = "".join(s[offset::collen] for offset in range(collen))
             permutated = "".join(poss[c + i] for c in range(0, slen, rowlen) for i in permu)
             print(permu)
-            if permutated[:6] == "apollo":
-                print(permu, permutated)
             yield permu, permutated
 
 
