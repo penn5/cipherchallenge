@@ -4,6 +4,7 @@ import operator
 import itertools
 import collections
 import copy
+import math
 
 
 
@@ -11,6 +12,7 @@ ALPHABET_ENGLISH = 1.73
 ALPHABET_OFFSET = 0.15
 MAX_ALPHABETS = 30
 TRANS_THE_RATIO = 100
+TRANS_WORD_RATIO = 0.9
 
 
 def cleanup_str(s, spaces=True):
@@ -49,10 +51,10 @@ def solve(ost, alphabets=1, given_mapping=None):
             mapping = given_mapping[alphabet]
         mapping[try_letter(s, distribution, "e")] = "e"
         mapping[try_letter(s, distribution, "t")] = "t"
-        if set(("e", "t")) == mapping.keys():
+        if set(("e", "t")) == mapping.keys() or True:  # TODO
             print("Transposition cipher detected.")
-            print(trans_perm_guess(s))
-#            print(trans_col_guess(s))
+#            print(trans_perm_guess(s))
+            print(trans_col_guess(s))
             return
         print(mapping)
         print(s.translate(str.maketrans(mapping)))
@@ -199,23 +201,40 @@ def trans_perm_guess(s):
                 return poss
 
 def trans_col_gen(s):
-    for length in range(1, 30):
-#        print(length)
-        key = range(length)
-        if 1:
-#        for key in itertools.permutations(range(length)):
-            #if key == (1, 6, 4, 2, 0, 5, 3):
-                #print(key, "".join(s[key[offset]::length] for offset in range(length)))
-            print("".join(s[key[offset]::length] for offset in range(length)))
-            yield "".join(s[key[offset]::length] for offset in range(length))
+    slen = len(s)
+    for rowlen in range(7, 8):  # TODO
+        collen = math.ceil(slen / rowlen)
+        print(rowlen, collen)
+        for permu in itertools.permutations(range(rowlen)):
+            poss = "".join(s[offset::collen] for offset in range(collen))
+            permutated = "".join(poss[c + i] for c in range(0, slen, rowlen) for i in permu)
+            print(permu, permutated)
+            yield permu, permutated
 
 
 def trans_col_guess(s):
-    for poss in trans_col_gen(s):
+    for permu, poss in trans_col_gen(s):
         the_count = poss.count("the")
-        print(the_count)
-        if the_count and len(s) / the_count < TRANS_THE_RATIO:
+        word_ratio = get_word_ratio(poss)
+        if word_ratio > TRANS_WORD_RATIO:
             return poss
+#        if the_count and len(s) / the_count < TRANS_THE_RATIO:
+#            return poss
+
+
+def get_word_ratio(s):
+    slen = len(s)
+    found = 0
+    offset = 0
+    while offset < slen:
+        for wordlen in range(min(5, slen - offset), 2, -1):
+            if s[offset:offset + wordlen] in ALLWORDS:
+                found += wordlen
+                offset += wordlen
+                break
+        offset += 1
+    print("word ratio", found / slen)
+    return found / slen
 
 
 def check_word(s, target, maps, alphabets, thresh=None):
@@ -409,9 +428,10 @@ FREQUENCIES = dict(sorted(json.load(open("frequencies.json")).items(), key=lambd
 WORDS = {}
 for word in open("english-words/words_alpha.txt").readlines():
     WORDS.setdefault(abstractify_word(word.lower().strip()), []).append(word.lower().strip())
-#ANAGRAMS = {}
-#for word in open("english-words/words_alpha.txt").readlines():
-#    ANAGRAMS.setdefault("".join(sorted(word.lower().strip())).append(word.lower().strip())
+ALLWORDS = []
+for word in open("The-Oxford-3000/The_Oxford_3000.txt").readlines():
+    if len(word.strip()) in range(2, 5):
+        ALLWORDS.append(word.lower().strip())
 
 
 def main():
@@ -423,7 +443,8 @@ def main():
     print()
     print()
     print()
-    alphabets = count_alphabets(s)
+#    alphabets = count_alphabets(s)
+    alphabets = 1  # TODO
     print("alphabets\t\t", alphabets)
     subtext = cleanup_str(s)
     alphabet = solve(subtext, alphabets)

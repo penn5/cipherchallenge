@@ -1,3 +1,6 @@
 [submodule "english-words"]
 	path = english-words
 	url = https://github.com/dwyl/english-words
+[submodule "The-Oxford-3000"]
+	path = The-Oxford-3000
+	url = https://github.com/sapbmw/The-Oxford-3000
