@@ -8,7 +8,7 @@ import copy
 
 
 ALPHABET_ENGLISH = 1.73
-ALPHABET_OFFSET = 0.1
+ALPHABET_OFFSET = 0.15
 MAX_ALPHABETS = 30
 TRANS_THE_RATIO = 100
 
@@ -52,6 +52,7 @@ def solve(st, alphabets=1, given_mapping=None):
         if set(("e", "t")) == mapping.keys():
             print("Transposition cipher detected.")
             print(trans_perm_guess(s))
+#            print(trans_col_guess(s))
             return
         print(mapping)
         print(s.translate(str.maketrans(mapping)))
@@ -163,7 +164,7 @@ def solve(st, alphabets=1, given_mapping=None):
 
 
 def trans_perm_gen(s):
-    for length in range(3, 6):
+    for length in range(3, 7):
         for permu in itertools.permutations(range(length)):
             tmp = []
             for start in range(0, len(s), length):
@@ -171,8 +172,6 @@ def trans_perm_gen(s):
                     tmp.append(s[start:])
                 else:
                     tmp.append("".join(s[start + x] for x in permu))
-#            if permu == (1,0,4,3,2):
-#                print(permu, "".join(tmp))
             yield permu, "".join(tmp)
 
 
@@ -181,6 +180,26 @@ def trans_perm_guess(s):
         the_count = poss.count("the")
         if the_count and len(s) / the_count < TRANS_THE_RATIO:
             return poss
+        print(permu)
+        for col in trans_col_gen(poss):
+            the_count = col.count("the")
+            print(the_count)
+            if the_count and len(s) / the_count < TRANS_THE_RATIO:
+                return poss
+
+def trans_col_gen(s):
+    for collen in range(1, 30):
+        text = "".join(s[offset::collen] for offset in range(collen))
+        yield text
+
+
+def trans_col_guess(s):
+    for permu, poss in trans_col_gen(s):
+        the_count = poss.count("the")
+        print(the_count)
+        if the_count and len(s) / the_count < TRANS_THE_RATIO:
+            return poss
+
 
 def check_word(s, target, maps, alphabets, thresh=None):
     uniqlen = len(set(target))
