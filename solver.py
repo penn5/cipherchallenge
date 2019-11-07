@@ -12,7 +12,7 @@ ALPHABET_ENGLISH = 1.73
 ALPHABET_OFFSET = 0.15
 MAX_ALPHABETS = 30
 TRANS_THE_RATIO = 100
-TRANS_WORD_RATIO = 0.9
+TRANS_WORD_RATIO = 0.4
 
 
 def cleanup_str(s, spaces=True):
@@ -204,18 +204,19 @@ def trans_col_gen(s):
     slen = len(s)
     for rowlen in range(7, 8):  # TODO
         collen = math.ceil(slen / rowlen)
-        print(rowlen, collen)
         for permu in itertools.permutations(range(rowlen)):
             poss = "".join(s[offset::collen] for offset in range(collen))
             permutated = "".join(poss[c + i] for c in range(0, slen, rowlen) for i in permu)
-            print(permu, permutated)
+            print(permu)
+            if permutated[:6] == "apollo":
+                print(permu, permutated)
             yield permu, permutated
 
 
 def trans_col_guess(s):
     for permu, poss in trans_col_gen(s):
-        the_count = poss.count("the")
-        word_ratio = get_word_ratio(poss)
+#        the_count = poss.count("the")
+        word_ratio = get_word_ratio(poss[:100])
         if word_ratio > TRANS_WORD_RATIO:
             return poss
 #        if the_count and len(s) / the_count < TRANS_THE_RATIO:
@@ -227,7 +228,7 @@ def get_word_ratio(s):
     found = 0
     offset = 0
     while offset < slen:
-        for wordlen in range(min(5, slen - offset), 2, -1):
+        for wordlen in range(min(7, slen - offset), 2, -1):
             if s[offset:offset + wordlen] in ALLWORDS:
                 found += wordlen
                 offset += wordlen
@@ -430,7 +431,7 @@ for word in open("english-words/words_alpha.txt").readlines():
     WORDS.setdefault(abstractify_word(word.lower().strip()), []).append(word.lower().strip())
 ALLWORDS = []
 for word in open("The-Oxford-3000/The_Oxford_3000.txt").readlines():
-    if len(word.strip()) in range(2, 5):
+    if len(word.strip()) in range(2, 7):
         ALLWORDS.append(word.lower().strip())
 
 
