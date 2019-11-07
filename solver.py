@@ -36,8 +36,8 @@ def get_words(s):
     return [x[0] for x in sorted(frequencies.items(), key=lambda kv: kv[1], reverse=True)]
 
 
-def solve(st, alphabets=1, given_mapping=None):
-    st = cleanup_str(st, False)
+def solve(ost, alphabets=1, given_mapping=None):
+    st = cleanup_str(ost, False)
     maps = []
     for alphabet in range(alphabets):
         s = st[alphabet::alphabets]
@@ -161,6 +161,17 @@ def solve(st, alphabets=1, given_mapping=None):
                 print("Dest already used. Override by putting a '+' at the end.")
                 continue
         maps[alphabet][inp[1]] = inp[2]
+        print(maps)
+    ret = ""
+    i = 0
+    for char in ost:
+        if char in string.ascii_lowercase and char in maps[i % alphabets]:
+            ret += maps[i % alphabets][char]
+        else:
+            ret += char
+        i += 1
+    print(ret)
+    return mapping
 
 
 def trans_perm_gen(s):
@@ -188,13 +199,19 @@ def trans_perm_guess(s):
                 return poss
 
 def trans_col_gen(s):
-    for collen in range(1, 30):
-        text = "".join(s[offset::collen] for offset in range(collen))
-        yield text
+    for length in range(1, 30):
+#        print(length)
+        key = range(length)
+        if 1:
+#        for key in itertools.permutations(range(length)):
+            #if key == (1, 6, 4, 2, 0, 5, 3):
+                #print(key, "".join(s[key[offset]::length] for offset in range(length)))
+            print("".join(s[key[offset]::length] for offset in range(length)))
+            yield "".join(s[key[offset]::length] for offset in range(length))
 
 
 def trans_col_guess(s):
-    for permu, poss in trans_col_gen(s):
+    for poss in trans_col_gen(s):
         the_count = poss.count("the")
         print(the_count)
         if the_count and len(s) / the_count < TRANS_THE_RATIO:
