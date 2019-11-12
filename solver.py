@@ -5,18 +5,21 @@ import itertools
 import collections
 import copy
 import math
-
+import statistics
 
 
 ALPHABET_ENGLISH = 1.73
 ALPHABET_OFFSET = 0.15
 MAX_ALPHABETS = 30
 TRANS_THE_RATIO = 100
-TRANS_WORD_RATIO = 0.37
+TRANS_WORD_RATIO = 0.33
 
 
 def cleanup_str(s, spaces=True):
     return "".join(c if c in (string.ascii_lowercase + (" " if spaces else "")) else (" " if spaces else "") for c in s.lower())
+
+def make_raw_freqencies(s):
+    return [x[0] for x in sorted(make_frequencies(s).items(), key=operator.itemgetter(1), reverse=True)]
 
 
 def make_frequencies(s):
@@ -41,6 +44,7 @@ def get_words(s):
 def solve(ost, alphabets=1, given_mapping=None):
     st = cleanup_str(ost, False)
     maps = []
+    caesars = 0
     for alphabet in range(alphabets):
         s = st[alphabet::alphabets]
         distribution = make_frequencies(s)
@@ -53,12 +57,22 @@ def solve(ost, alphabets=1, given_mapping=None):
         mapping[try_letter(s, distribution, "t")] = "t"
         if set(("e", "t")) == mapping.keys():
             print("Transposition cipher detected.")
-#            print(trans_perm_guess(s))
+            print(trans_perm_guess(s))
             print(trans_col_guess(s))
             return
+        rmapping = dict(map(reversed, mapping.items()))
+        if (string.ascii_lowercase.index(rmapping["e"]) - string.ascii_lowercase.index("e")
+                - string.ascii_lowercase.index(rmapping["t"]) + string.ascii_lowercase.index("t")) % 26 == 0:
+            caesars += 1
+            if caesars > alphabets / 2:
+                break
+        del rmapping
         print(mapping)
         print(s.translate(str.maketrans(mapping)))
         maps.append(mapping)
+    if caesars > alphabets / 3:
+        maps = [{chr(x - offset + 97): chr((x % 26) + 97) for x in range(offset, offset + 26)} for offset in try_vigenere(st, alphabets)]
+
     # Find "the"
 #    for start in range(len(s) - 3):
 #        sub = s[start:start + 3]
@@ -78,9 +92,12 @@ def solve(ost, alphabets=1, given_mapping=None):
 #                and maps[(base_alphabet) + :
 #            # Probably says "the"
 #            maps[(base_alphabet + 1) % alphabets][sub[1]] = "h"
+    s = st
     modified = True
     lastmaps = copy.deepcopy(maps)
-    while modified:
+    print(maps)
+    print([len(map) for map in maps])
+    while modified and any(len(map) != 26 for map in maps):
         check_word(s, "the", maps, alphabets)
         print(maps)
         check_word(s, "that", maps, alphabets)
@@ -128,7 +145,7 @@ def solve(ost, alphabets=1, given_mapping=None):
                 ret.append("\u001b[32;1m" + maps[alphabet][s[i]] + "\033[0m")
             else:
                 ret.append("\u001b[31;1m" + s[i] + "\033[0m")
-            alphabet = alphabet + 1 % alphabets
+            alphabet = (alphabet + 1) % alphabets
 
         print("".join(ret))
 
@@ -176,6 +193,39 @@ def solve(ost, alphabets=1, given_mapping=None):
     return mapping
 
 
+def try_vigenere(s, alphabets):
+    posskeys = []
+    for alphabet in range(alphabets):
+        frequency = make_raw_freqencies(s[alphabet::alphabets])
+        print(frequency[:3])
+        posskeys.append([(ord(frequency[0]) - ord("e")) % 26, (ord(frequency[1]) - ord("t")) % 26])
+        posskeys[-1].append(round(statistics.mean(posskeys[-1])))
+    print(posskeys)
+    ret = try_vigenere_keys(s, alphabets, posskeys)
+    if ret is None:
+        ret = try_vigenere_bruteforce(s, alphabets)
+    return ret
+
+
+def try_vigenere_bruteforce(s, alphabets):
+    return try_vigenere_keys(s, alphabets, [range(len(string.ascii_lowercase))])
+
+
+def try_vigenere_keys(s, alphabets, keys):
+    for key in itertools.product(*keys, repeat=alphabets if len(keys) == 1 else 1):
+        print(key)
+        i = 0
+        poss = []
+        for c in s:
+            poss.append(chr((ord(c) - key[i] - 97) % 26 + 97))
+            i = (i + 1) % alphabets
+        poss = "".join(poss)
+        word_ratio = get_word_ratio(poss[:50])
+        if word_ratio > TRANS_WORD_RATIO or poss.startswith("meg"):
+            print(poss)
+            print("FOUND!!!!!!!!")
+            return key
+
 def trans_perm_gen(s):
     for length in range(3, 7):
         for permu in itertools.permutations(range(length)):
@@ -216,12 +266,9 @@ def trans_col_gen(s):
 
 def trans_col_guess(s):
     for permu, poss in trans_col_gen(s):
-#        the_count = poss.count("the")
-        word_ratio = get_word_ratio(poss[:100])
+        word_ratio = get_word_ratio(poss[:50])
         if word_ratio > TRANS_WORD_RATIO:
             return poss
-#        if the_count and len(s) / the_count < TRANS_THE_RATIO:
-#            return poss
 
 
 def get_word_ratio(s):
@@ -229,13 +276,13 @@ def get_word_ratio(s):
     found = 0
     offset = 0
     while offset < slen:
-        for wordlen in range(min(7, slen - offset), 2, -1):
+        for wordlen in range(min(6, slen - offset), 2, -1):
             if s[offset:offset + wordlen] in ALLWORDS:
                 found += wordlen
                 offset += wordlen
                 break
         offset += 1
-    print("word ratio", found / slen)
+#    print("word ratio", found / slen)
     return found / slen
 
 
@@ -250,13 +297,13 @@ def check_word(s, target, maps, alphabets, thresh=None):
         base_alphabet = start % alphabets
         matched = 0
         for i in range(l):
-            if sub[i] not in maps[base_alphabet + i % alphabets]:
-                if target[i] in maps[base_alphabet + i % alphabets].values():
+            if sub[i] not in maps[(base_alphabet + i) % alphabets]:
+                if target[i] in maps[(base_alphabet + i) % alphabets].values():
                     # The value we want is set, but its key isn't the one we are on. Clearly, something is wrong.
                     matched = 0
                     break
                 continue  # Not set in mapping
-            if maps[base_alphabet + i % alphabets][sub[i]] != target[i]:
+            if maps[(base_alphabet + i) % alphabets][sub[i]] != target[i]:
                 matched = 0  # It's wrong.
                 break
             matched += 1
@@ -285,9 +332,9 @@ def check_word(s, target, maps, alphabets, thresh=None):
         return ret
     sub = common[0][0]
     for i in range(l):
-        if sub[i] in maps[base_alphabet + i % alphabets]:
-            assert maps[base_alphabet + i % alphabets][sub[i]] == target[i], (sub, target, i, maps, base_alphabet, alphabets)
-        maps[base_alphabet + i % alphabets][sub[i]] = target[i]
+        if sub[i] in maps[(base_alphabet + i) % alphabets]:
+            assert maps[(base_alphabet + i) % alphabets][sub[i]] == target[i], (sub, target, i, maps, base_alphabet, alphabets)
+        maps[(base_alphabet + i) % alphabets][sub[i]] = target[i]
     print(f"Matched {target} to {sub}")
     return [sub]
 
@@ -403,15 +450,18 @@ def try_letter(s, frequencies, letter):
         return None
 
 def count_alphabets(s):
+    return next(gen_alphabets(s))[0]
+    return min(gen_alphabets(s), key=operator.itemgetter(1))[0]
+
+
+def gen_alphabets(s):
     for alphabets in range(1, MAX_ALPHABETS):
         total_ioc = 0
         for offset in range(alphabets):
             ioc = calculate_ioc(s[offset::alphabets])
             total_ioc += ioc
-        print(total_ioc / alphabets)
         if total_ioc / alphabets > ALPHABET_ENGLISH - ALPHABET_OFFSET and total_ioc / alphabets < ALPHABET_ENGLISH + ALPHABET_OFFSET:
-            return alphabets
-    return None
+            yield alphabets, abs(total_ioc / alphabets - ALPHABET_ENGLISH)
 
 
 def calculate_ioc(s, normalise=26):
@@ -427,12 +477,12 @@ def calculate_ioc(s, normalise=26):
 
 
 FREQUENCIES = dict(sorted(json.load(open("frequencies.json")).items(), key=lambda kv: kv[1], reverse=True))
-WORDS = {}
-for word in open("english-words/words_alpha.txt").readlines():
-    WORDS.setdefault(abstractify_word(word.lower().strip()), []).append(word.lower().strip())
+#WORDS = {}
+#for word in open("english-words/words_alpha.txt").readlines():
+#    WORDS.setdefault(abstractify_word(word.lower().strip()), []).append(word.lower().strip())
 ALLWORDS = []
 for word in open("The-Oxford-3000/The_Oxford_3000.txt").readlines():
-    if len(word.strip()) in range(2, 7):
+    if len(word.strip()) in range(2, 6):
         ALLWORDS.append(word.lower().strip())
 
 
