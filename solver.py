@@ -71,7 +71,7 @@ def solve(ost, alphabets=1, given_mapping=None):
         print(s.translate(str.maketrans(mapping)))
         maps.append(mapping)
     if caesars > alphabets / 3:
-        maps = [{chr(x - offset + 97): chr((x % 26) + 97) for x in range(offset, offset + 26)} for offset in try_vigenere(st, alphabets)]
+        maps = [{chr(((i + offset) % 26) + 97): chr(i + 97) for i in range(26)} for offset in try_vigenere(st, alphabets)]
 
     # Find "the"
 #    for start in range(len(s) - 3):
@@ -228,7 +228,7 @@ def try_vigenere_keys(s, alphabets, keys):
             i = (i + 1) % alphabets
         poss = "".join(poss)
         word_ratio = get_word_ratio(poss[:50])
-        if word_ratio > TRANS_WORD_RATIO or poss.startswith("meg"):
+        if word_ratio > TRANS_WORD_RATIO:
             print(poss)
             print("FOUND!!!!!!!!")
             return key
