@@ -203,6 +203,13 @@ def try_vigenere(s, alphabets):
     print(posskeys)
     ret = try_vigenere_keys(s, alphabets, posskeys)
     if ret is None:
+        for i, posskey in enumerate(posskeys):
+            if posskey[0] != posskey[1]:
+                # Inconsistency, bruteforce this entry
+                posskeys[i] = range(26)
+    print(posskeys)
+    ret = try_vigenere_keys(s, alphabets, posskeys)
+    if ret is None:
         ret = try_vigenere_bruteforce(s, alphabets)
     return ret
 
